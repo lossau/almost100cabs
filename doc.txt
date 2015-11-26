@@ -1,0 +1,14 @@
+Grava a posição atual e estado de um taxista.
+
+Parâmetros:
+	latitude
+	longitude
+	driverId (id único de taxista no sistema)
+	driverAvailable: true/false. Representa se o taxista está disponível ou não para corridas.
+
+b. Resposta:
+	Apenas status code HTTP
+
+Exemplo:
+POST /drivers/8475/status
+{"latitude":- 23.60810717,"longitude":- 46.67500346,"driverId":5997,"driverAvailable":true}
