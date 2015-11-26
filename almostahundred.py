@@ -37,14 +37,13 @@ def driver_status(driver_id):
         print "-- driver_id GET: {0}".format(driver_id)
         driver = [driver for driver in drivers if driver['driverId'] == driver_id]
         if len(driver) == 0:
-            # return make_response(jsonify({'error': 'Not found'}), 404)
             abort(404)
         return jsonify({'driver': driver})
 
     elif request.method == 'POST':
-        post_data = {}
-        for i in request.form:
-            post_data[i] = request.form[i]
+        if 'latitude' and 'longitude' and 'driverAvailable' not in request.json.keys():
+            print "NOT HERE"
+            abort(400)
 
         driver_found = False
         for index, driver in enumerate(drivers):
@@ -52,9 +51,9 @@ def driver_status(driver_id):
                 driver_found = True
                 drivers[index] = {
                     "driverId": driver_id,
-                    "latitude": post_data['latitude'] or "",
-                    "longitude": post_data['longitude'] or "",
-                    "driverAvailable": post_data['driverAvailable'] or ""
+                    "latitude": request.json['latitude'] or "",
+                    "longitude": request.json['longitude'] or "",
+                    "driverAvailable": request.json['driverAvailable'] or ""
                 }
 
                 return driver_id
@@ -65,6 +64,11 @@ def driver_status(driver_id):
 @app.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
+
+
+@app.errorhandler(400)
+def bad_request(error):
+    return make_response(jsonify({'error': 'Bad Request'}), 400)
 
 
 if __name__ == '__main__':
