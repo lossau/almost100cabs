@@ -42,7 +42,26 @@ def driver_status(driverId):
         return driver_data
 
     elif request.method == 'POST':
-        return
+
+        post_data = {}
+        for i in request.form:
+            post_data[i] = request.form[i]
+
+        print post_data
+
+        # for driver in drivers:
+        #     if driver['driverId'] == driverId:
+        #         drivers[driver] = {
+        #             "latitude": request.form['latitude'],
+        #             "longitude": request.form['longitude'],
+        #             "driverId": driverId,
+        #             "driverAvailable": request.form['driverAvailable'],
+        #         }
+        #         return 200
+        #     else:
+        #         abort(404)
+
+        return driverId
 
 
 if __name__ == '__main__':
