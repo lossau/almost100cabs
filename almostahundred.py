@@ -1,6 +1,8 @@
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify, abort, make_response
 app = Flask(__name__)
 
+# TODO: add persistence with sqlite
+# TODO: add driver search endpoint
 
 drivers = [
     {
@@ -23,45 +25,46 @@ drivers = [
     }]
 
 
-@app.route('/drivers/<driverId>/status', methods=['GET', 'POST'])
-def driver_status(driverId):
+@app.route('/drivers/', methods=['GET'])
+def get_drivers():
+    return jsonify({"drivers": drivers})
+
+
+@app.route('/drivers/<driver_id>/status', methods=['GET', 'POST'])
+def driver_status(driver_id):
 
     if request.method == 'GET':
-        driver = [driver for driver in drivers if driver['driverId'] == driverId]
+        print "-- driver_id GET: {0}".format(driver_id)
+        driver = [driver for driver in drivers if driver['driverId'] == driver_id]
         if len(driver) == 0:
+            # return make_response(jsonify({'error': 'Not found'}), 404)
             abort(404)
         return jsonify({'driver': driver})
 
-        # add sqlite3 database
-        driver_data = {
-            "latitude": -23.60810717,
-            "longitude": -46.67500346,
-            "driverId": driverId,
-            "driverAvailable": True}
-        # return http status too
-        return driver_data
-
     elif request.method == 'POST':
-
         post_data = {}
         for i in request.form:
             post_data[i] = request.form[i]
 
-        print post_data
+        driver_found = False
+        for index, driver in enumerate(drivers):
+            if driver['driverId'] == driver_id:
+                driver_found = True
+                drivers[index] = {
+                    "driverId": driver_id,
+                    "latitude": post_data['latitude'] or "",
+                    "longitude": post_data['longitude'] or "",
+                    "driverAvailable": post_data['driverAvailable'] or ""
+                }
 
-        # for driver in drivers:
-        #     if driver['driverId'] == driverId:
-        #         drivers[driver] = {
-        #             "latitude": request.form['latitude'],
-        #             "longitude": request.form['longitude'],
-        #             "driverId": driverId,
-        #             "driverAvailable": request.form['driverAvailable'],
-        #         }
-        #         return 200
-        #     else:
-        #         abort(404)
+                return driver_id
+        if not driver_found:
+            abort(404)
 
-        return driverId
+
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
 
 
 if __name__ == '__main__':
