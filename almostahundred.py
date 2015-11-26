@@ -72,6 +72,8 @@ def bad_request(error):
 
 
 if __name__ == '__main__':
-    # remember to turn this off!!!!!!
-    app.debug = True
+    # remember to leave this off!!!!!!
+    # remember to leave this off!!!!!!
+    # remember to leave this off!!!!!!
+    app.debug = False
     app.run()
