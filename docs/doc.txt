@@ -1,14 +1,60 @@
-Grava a posição atual e estado de um taxista.
+[1] - Grava a posição atual e estado de um taxista.
 
-Parâmetros:
-	latitude
-	longitude
-	driverId (id único de taxista no sistema)
-	driverAvailable: true/false. Representa se o taxista está disponível ou não para corridas.
+Parâmetros:
+	- latitude
+	- longitude
+	- driverId
+	- driverAvailable
 
-b. Resposta:
+Resposta:
 	Apenas status code HTTP
 
 Exemplo:
-POST /drivers/8475/status
-{"latitude":- 23.60810717,"longitude":- 46.67500346,"driverId":5997,"driverAvailable":true}
+    POST /drivers/8475/status
+    {"latitude": -23.60810717, "longitude": -46.67500346, "driverId": 5997, "driverAvailable": true}
+
+-------------------------------------------------------------------------------------------------------
+[2] - Lista os taxistas ativos dentro de uma retângulo geográfico.
+
+Parâmetros:
+    - sw: ponto sudoeste do retângulo
+    - ne: ponto nordeste do retângulo
+
+Resposta: Um array em formato json, de um objeto com atributos:
+    - latitude
+    - longitude
+    - driverId
+    - driverAvailable
+
+c. Exemplo:
+    GET /drivers/inArea?sw=-23.612474,-46.702746&ne=-23.589548,-46.673392
+
+    [
+        {"latitude": -23.6081071, "longitude": -46.67500346, "driverId": 5997, "driverAvailable": true},
+        {"latitude": -23.5906504, "longitude": -46.68837101, "driverId": 63446, "driverAvailable": true},
+        {"latitude": -23.6092550, "longitude": -46.69390415, "driverId": 1982, "driverAvailable": true},
+        {"latitude": -23.5998716, "longitude": -46.68090333, "driverId": 9106, "driverAvailable": true},
+        {"latitude": -23.5949261, "longitude": -46.69024011, "driverId": 16434, "driverAvailable": true}
+    ]
+
+-------------------------------------------------------------------------------------------------------
+[3] - Estado de um taxista. Recebe o id de um taxista e retorna os dados dele:
+
+Parâmetros:
+    - driverId
+
+Resposta:
+    - latitude
+    - longitude
+    - driverId
+    - driverAvailable
+
+Exemplo:
+    GET /drivers/73456/status
+    {"latitude": -23.60810717, "longitude": -46.67500346, "driverId": 5997, "driverAvailable": true}
+
+
+
+
+
+
