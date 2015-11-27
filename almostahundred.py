@@ -41,8 +41,15 @@ def driver_status(driver_id):
         return jsonify({'driver': driver})
 
     elif request.method == 'POST':
+
+        # validation
+        if not request.json:
+            abort(400)
         if 'latitude' and 'longitude' and 'driverAvailable' not in request.json.keys():
-            print "NOT HERE"
+            abort(400)
+        if not is_number(request.json['longitude']) or not is_number(request.json['latitude']):
+            abort(400)
+        if not is_bool(request.json['driverAvailable']):
             abort(400)
 
         driver_found = False
@@ -61,6 +68,12 @@ def driver_status(driver_id):
             abort(404)
 
 
+# GET /drivers/inArea?sw=-23.612474,-46.702746&ne=-23.589548,-46.673392
+# @app.route('/drivers/inArea?')
+def who_is_here(sw, ne):
+    pass
+
+
 @app.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
@@ -71,9 +84,21 @@ def bad_request(error):
     return make_response(jsonify({'error': 'Bad Request'}), 400)
 
 
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+
+def is_bool(s):
+    return s in ['true', 'false']
+
+
 if __name__ == '__main__':
     # remember to leave this off!!!!!!
     # remember to leave this off!!!!!!
     # remember to leave this off!!!!!!
-    app.debug = False
+    app.debug = True
     app.run()
