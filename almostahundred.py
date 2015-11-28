@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, abort, make_response
+from flask import Flask, request, jsonify, make_response
 app = Flask(__name__)
 
 # TODO: add persistence with sqlite
@@ -35,21 +35,20 @@ def driver_status(driver_id):
     if request.method == 'GET':
         driver = [driver for driver in drivers if driver['driverId'] == driver_id]
         if len(driver) == 0:
-            abort(404)
+            raise InvalidUsage('Driver not found', status_code=404)
         return jsonify({'driver': driver})
 
     elif request.method == 'POST':
 
         # validation
         if not request.json:
-            abort(400)
+            raise InvalidUsage('Missing parameters', status_code=400)
         if 'latitude' and 'longitude' and 'driverAvailable' not in request.json.keys():
-            abort(400)
-        if not is_number(request.json['longitude']) or not is_number(request.json['latitude']):
-            abort(400)
+            raise InvalidUsage('Missing parameters', status_code=400)
+        if not _is_number(request.json['longitude']) or not _is_number(request.json['latitude']):
+            raise InvalidUsage('Invalid coordinates', status_code=400)
         if not isinstance(request.json['driverAvailable'], bool):
-            print 'not bool'
-            abort(400)
+            raise InvalidUsage('Invalid driver status', status_code=400)
 
         driver_found = False
         for index, driver in enumerate(drivers):
@@ -64,7 +63,7 @@ def driver_status(driver_id):
 
                 return driver_id
         if not driver_found:
-            abort(404)
+            raise InvalidUsage('Driver not found', status_code=404)
 
 
 # GET /drivers/inArea?sw=-23.612474,-46.702746&ne=-23.589548,-46.673392
@@ -76,30 +75,43 @@ def who_is_active_here():
         sw = tuple([float(i) for i in request.args.get('sw').split(',')])
         ne = tuple([float(i) for i in request.args.get('ne').split(',')])
     except:
-        abort(400)
+        raise InvalidUsage('Invalid coordinates', status_code=400)
 
     drivers_in_rectangle = []
     for driver in drivers:
         driver_pos = (driver['latitude'], driver['longitude'])
         driver_availability = driver['driverAvailable']
-        if is_inside_rectangle(sw, ne, driver_pos) and driver_availability == 'true':
+        if _is_inside_rectangle(sw, ne, driver_pos) and driver_availability == 'true':
             drivers_in_rectangle.append(driver)
 
     return make_response(jsonify({'drivers_in_rectangle': drivers_in_rectangle}), 200)
 
 
-# Error Handlers
-@app.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify({'error': 'Not found'}), 404)
+# Error Handler
+class InvalidUsage(Exception):
+    status_code = 400
+
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
 
 
-@app.errorhandler(400)
-def bad_request(error):
-    return make_response(jsonify({'error': 'Bad Request'}), 400)
+@app.errorhandler(InvalidUsage)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
 
-def is_number(s):
+def _is_number(s):
     try:
         float(s)
         return True
@@ -107,11 +119,7 @@ def is_number(s):
         return False
 
 
-def is_bool(s):
-    return s in ['true', 'false']
-
-
-def is_inside_rectangle(sw, ne, point):
+def _is_inside_rectangle(sw, ne, point):
     if point[0] < sw[0] or point[0] > ne[0]:
         return False
     elif point[1] < sw[1] or point[1] > ne[1]:
