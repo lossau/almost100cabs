@@ -5,8 +5,10 @@ from errors import InvalidUsage
 
 app = Flask(__name__)
 
-# TODO: add persistence with sqlite
 # TODO: think about input parameters requirements
+# it should allow availability only, or both lat and lon
+
+# TODO: add persistence with sqlite
 # TODO: create endpoint to add driver
 # TODO: send to the cloud
 # TODO: add authentication
@@ -82,6 +84,7 @@ def driver_status(driver_id):
     elif request.method == 'POST':
         # validation
         # which parameters should be required??
+        # it should allow availability only, or both lat and lon
         if not request.json:
             raise InvalidUsage('Missing parameters', status_code=400)
         if 'latitude' and 'longitude' and 'driverAvailable' not in request.json.keys():
