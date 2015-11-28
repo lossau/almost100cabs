@@ -56,12 +56,12 @@ def driver_status(driver_id):
                 driver_found = True
                 drivers[index] = {
                     "driverId": driver_id,
-                    "latitude": request.json['latitude'] or "",
-                    "longitude": request.json['longitude'] or "",
-                    "driverAvailable": request.json['driverAvailable'] or ""
+                    "latitude": request.json['latitude'],
+                    "longitude": request.json['longitude'],
+                    "driverAvailable": request.json['driverAvailable']
                 }
 
-                return driver_id
+                return ('', 204)
         if not driver_found:
             raise InvalidUsage('Driver not found', status_code=404)
 
