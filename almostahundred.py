@@ -33,7 +33,6 @@ def get_drivers():
 def driver_status(driver_id):
 
     if request.method == 'GET':
-        print "-- driver_id GET: {0}".format(driver_id)
         driver = [driver for driver in drivers if driver['driverId'] == driver_id]
         if len(driver) == 0:
             abort(404)
@@ -48,7 +47,8 @@ def driver_status(driver_id):
             abort(400)
         if not is_number(request.json['longitude']) or not is_number(request.json['latitude']):
             abort(400)
-        if not is_bool(request.json['driverAvailable']):
+        if not isinstance(request.json['driverAvailable'], bool):
+            print 'not bool'
             abort(400)
 
         driver_found = False
@@ -69,19 +69,20 @@ def driver_status(driver_id):
 
 # GET /drivers/inArea?sw=-23.612474,-46.702746&ne=-23.589548,-46.673392
 @app.route('/drivers/inArea', methods=['GET'])
-def who_is_here():
+def who_is_active_here():
 
-    sw = tuple([float(i) for i in request.args.get('sw').split(',')])
-    ne = tuple([float(i) for i in request.args.get('ne').split(',')])
-    rectangle = get_rectangle(sw, ne)
-    # driver_pos = ("-23.592466", "-46.683393")
-    # is_driver_in_rectangle = point_in_poly(driver_pos, rectangle)
+    # validation
+    try:
+        sw = tuple([float(i) for i in request.args.get('sw').split(',')])
+        ne = tuple([float(i) for i in request.args.get('ne').split(',')])
+    except:
+        abort(400)
 
     drivers_in_rectangle = []
-
     for driver in drivers:
         driver_pos = (driver['latitude'], driver['longitude'])
-        if point_in_poly(driver_pos, rectangle):
+        driver_availability = driver['driverAvailable']
+        if is_inside_rectangle(sw, ne, driver_pos) and driver_availability == 'true':
             drivers_in_rectangle.append(driver)
 
     return make_response(jsonify({'drivers_in_rectangle': drivers_in_rectangle}), 200)
@@ -110,33 +111,13 @@ def is_bool(s):
     return s in ['true', 'false']
 
 
-def point_in_poly(point, poly):
-
-    x = float(point[0])
-    y = float(point[1])
-
-    n = len(poly)
-    inside = False
-
-    p1x, p1y = poly[0]
-    for i in range(n + 1):
-        p2x, p2y = poly[i % n]
-        if y > min(p1y, p2y):
-            if y <= max(p1y, p2y):
-                if x <= max(p1x, p2x):
-                    if p1y != p2y:
-                        xints = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
-                    if p1x == p2x or x <= xints:
-                        inside = not inside
-        p1x, p1y = p2x, p2y
-
-    return inside
-
-
-def get_rectangle(sw, ne):
-    nw = (sw[0], ne[1])
-    se = (ne[0], sw[1])
-    return [sw, se, ne, nw]
+def is_inside_rectangle(sw, ne, point):
+    if point[0] < sw[0] or point[0] > ne[0]:
+        return False
+    elif point[1] < sw[1] or point[1] > ne[1]:
+        return False
+    else:
+        return True
 
 
 if __name__ == '__main__':
