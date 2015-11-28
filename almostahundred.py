@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify, make_response
+from functools import wraps
+
 app = Flask(__name__)
 
 # TODO: add persistence with sqlite
@@ -41,12 +43,35 @@ drivers = [
     }]
 
 
+def check_auth(username, password):
+    """This function is called to check if a username /
+    password combination is valid.
+    """
+    return username == 'admin' and password == 'admin'
+
+
+def authenticate():
+    raise InvalidUsage('Not authorized', status_code=401)
+
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
+
 @app.route('/drivers/', methods=['GET'])
+@requires_auth
 def get_drivers():
     return jsonify({"drivers": drivers})
 
 
 @app.route('/drivers/<driver_id>/status', methods=['GET', 'POST'])
+@requires_auth
 def driver_status(driver_id):
 
     # GET /drivers/73456/status
@@ -89,6 +114,7 @@ def driver_status(driver_id):
 
 # GET /drivers/inArea?sw=-23.612474,-46.702746&ne=-23.589548,-46.673392
 @app.route('/drivers/inArea', methods=['GET'])
+@requires_auth
 def who_is_active_here():
 
     # validation
@@ -110,7 +136,7 @@ def who_is_active_here():
     return make_response(jsonify({'drivers_in_rectangle': drivers_in_rectangle}), 200)
 
 
-# Error Handler
+# Error Handlers
 class InvalidUsage(Exception):
     status_code = 400
 
