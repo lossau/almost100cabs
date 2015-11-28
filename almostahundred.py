@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, abort, make_response
 app = Flask(__name__)
 
 # TODO: add persistence with sqlite
-# TODO: add driver search endpoint
 
 drivers = [
     {
@@ -69,11 +68,26 @@ def driver_status(driver_id):
 
 
 # GET /drivers/inArea?sw=-23.612474,-46.702746&ne=-23.589548,-46.673392
-# @app.route('/drivers/inArea?')
-def who_is_here(sw, ne):
-    pass
+@app.route('/drivers/inArea', methods=['GET'])
+def who_is_here():
+
+    sw = tuple([float(i) for i in request.args.get('sw').split(',')])
+    ne = tuple([float(i) for i in request.args.get('ne').split(',')])
+    rectangle = get_rectangle(sw, ne)
+    # driver_pos = ("-23.592466", "-46.683393")
+    # is_driver_in_rectangle = point_in_poly(driver_pos, rectangle)
+
+    drivers_in_rectangle = []
+
+    for driver in drivers:
+        driver_pos = (driver['latitude'], driver['longitude'])
+        if point_in_poly(driver_pos, rectangle):
+            drivers_in_rectangle.append(driver)
+
+    return make_response(jsonify({'drivers_in_rectangle': drivers_in_rectangle}), 200)
 
 
+# Error Handlers
 @app.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
@@ -94,6 +108,35 @@ def is_number(s):
 
 def is_bool(s):
     return s in ['true', 'false']
+
+
+def point_in_poly(point, poly):
+
+    x = float(point[0])
+    y = float(point[1])
+
+    n = len(poly)
+    inside = False
+
+    p1x, p1y = poly[0]
+    for i in range(n + 1):
+        p2x, p2y = poly[i % n]
+        if y > min(p1y, p2y):
+            if y <= max(p1y, p2y):
+                if x <= max(p1x, p2x):
+                    if p1y != p2y:
+                        xints = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                    if p1x == p2x or x <= xints:
+                        inside = not inside
+        p1x, p1y = p2x, p2y
+
+    return inside
+
+
+def get_rectangle(sw, ne):
+    nw = (sw[0], ne[1])
+    se = (ne[0], sw[1])
+    return [sw, se, ne, nw]
 
 
 if __name__ == '__main__':
