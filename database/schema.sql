@@ -1,5 +1,6 @@
+DROP TABLE if exists Drivers;
 CREATE TABLE Drivers(
-   driverId INT PRIMARY KEY NOT NULL,
+   driverId INT PRIMARY KEY NOT NULL AUTOINCREMENT,
    latitude REAL,
    longitude REAL,
    driverAvailable CHAR(50),
