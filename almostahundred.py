@@ -1,3 +1,4 @@
+import sqlite3
 from flask import Flask, request, jsonify, make_response
 from auth import requires_auth
 from errors import InvalidUsage
@@ -13,6 +14,30 @@ app = Flask(__name__)
 # TODO: send to the cloud
 # TODO: add authentication
 # TODO: create another way to find available drivers
+# TODO: take care of error 500
+
+
+# persistence
+from contextlib import closing
+
+DATABASE = 'database/drivers.db'
+SECRET_KEY = 'admin'
+USERNAME = 'admin'
+PASSWORD = 'admin'
+
+
+def connect_db():
+    return sqlite3.connect(app.config['DATABASE'])
+
+
+def init_db():
+    with closing(connect_db()) as db:
+        with app.open_resource('database/schema.sql', mode='r') as f:
+            db.cursor().executescript(f.read())
+        db.commit()
+
+
+# ---------------------------
 
 drivers = [
     {
@@ -154,4 +179,6 @@ if __name__ == '__main__':
     # remember to leave this off!!!!!!
     app.debug = True
     # app.debug = False
+    app.config.from_object(__name__)
+    init_db()
     app.run()
