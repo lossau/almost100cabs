@@ -1,5 +1,5 @@
 import sqlite3
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, g
 from auth import requires_auth
 from errors import InvalidUsage
 
@@ -15,9 +15,10 @@ app = Flask(__name__)
 # TODO: add authentication
 # TODO: create another way to find available drivers
 # TODO: take care of error 500
+# TODO: properly divide app into files, move error handlers to errors.py
 
 
-# persistence
+# --------------- persistence ------------
 from contextlib import closing
 
 DATABASE = 'database/drivers.db'
@@ -35,6 +36,27 @@ def init_db():
         with app.open_resource('database/schema.sql', mode='r') as f:
             db.cursor().executescript(f.read())
         db.commit()
+
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = connect_db()
+    return db
+
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+
+def query_db(query, args=(), one=False):
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    cur.close()
+    return (rv[0] if rv else None) if one else rv
 
 
 # ---------------------------
@@ -89,7 +111,23 @@ def _is_inside_rectangle(sw, ne, point):
         return True
 
 
+def dict_from_row(row):
+    return dict(zip(row.keys(), row))
+
+
 # routes
+@app.route('/test/', methods=['GET'])
+def test():
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    drivers = []
+    for driver in query_db('select * from drivers'):
+        drivers.append(dict_from_row(driver))
+    print "----- drivers: {0} - {1}".format(drivers, type(drivers))
+    return jsonify({'drivers': drivers})
+    return jsonify({'drivers': ""})
+
+
 @app.route('/drivers/', methods=['GET'])
 @requires_auth
 def get_drivers():
@@ -180,5 +218,5 @@ if __name__ == '__main__':
     app.debug = True
     # app.debug = False
     app.config.from_object(__name__)
-    init_db()
+    # init_db()
     app.run()
