@@ -49,7 +49,7 @@ drivers = [
     }]
 
 
-# ----- Error Handling --------------------------------------------
+# ----- Error Handling ------------------------------------
 class InvalidUsage(Exception):
     status_code = 400
 
@@ -83,9 +83,13 @@ def not_found(error):
     return make_response(jsonify({'message': 'Not found'}), 404)
 
 
-# ----- Authentication --------------------------------------------
+# ----- Authentication ------------------------------------
+USERNAME = 'admin'
+PASSWORD = 'admin'
+
+
 def _check_auth(username, password):
-    return username == 'admin' and password == 'admin'
+    return username == USERNAME and password == PASSWORD
 
 
 def _authenticate():
@@ -102,11 +106,9 @@ def requires_auth(f):
     return decorated
 
 
-# ----- Persistence --------------------------------------------
+# ----- Persistence ---------------------------------------
 DATABASE = 'database/drivers.db'
 SECRET_KEY = 'admin'
-USERNAME = 'admin'
-PASSWORD = 'admin'
 
 
 def connect_db():
@@ -141,7 +143,7 @@ def close_connection(exception):
         db.close()
 
 
-# ----- Custom Functions --------------------------------------------
+# ----- Custom Functions ----------------------------------
 def _is_number(s):
     try:
         float(s)
@@ -165,21 +167,32 @@ def _dict_from_row(row):
 
 # ----- Routes --------------------------------------------
 @app.route('/test/', methods=['GET'])
-def test():
+def test_get_drivers():
     db = get_db()
     db.row_factory = sqlite3.Row
     drivers = []
     for driver in query_db('select * from drivers'):
+        print "driver: {0}".format(driver)
         drivers.append(_dict_from_row(driver))
-    print "----- drivers: {0} - {1}".format(drivers, type(drivers))
-    return jsonify({'drivers': drivers})
-    return jsonify({'drivers': ""})
+    return make_response(jsonify({'drivers': drivers}), 200)
+
+
+@app.route('/test/<driver_id>')
+def test_get_driver(driver_id):
+    db = get_db()
+    db.row_factory = sqlite3.Row
+    driver = query_db('select * from drivers where driverId = ?', [driver_id], one=True)
+    if driver is None:
+        print 'No such user'
+    else:
+        print "driver: {0}".format(_dict_from_row(driver))
+    return make_response(jsonify({'driver': _dict_from_row(driver)}), 200)
 
 
 @app.route('/drivers/', methods=['GET'])
 @requires_auth
 def get_drivers():
-    return jsonify({"drivers": drivers})
+    return make_response(jsonify({'drivers': drivers}), 200)
 
 
 @app.route('/drivers/<driver_id>/status', methods=['GET', 'POST'])
@@ -190,7 +203,7 @@ def driver_status(driver_id):
         driver = [driver for driver in drivers if driver['driverId'] == driver_id]
         if len(driver) == 0:
             raise InvalidUsage('Driver not found', status_code=404)
-        return jsonify({'driver': driver})
+        return make_response(jsonify({'driver': driver}), 200)
 
     elif request.method == 'POST':
         # validation
@@ -242,7 +255,7 @@ def who_is_active_here():
     return make_response(jsonify({'active_drivers_in_rectangle': active_drivers_in_rectangle}), 200)
 
 
-# ----- App Startup --------------------------------------------
+# ----- App Startup ---------------------------------------
 if __name__ == '__main__':
     # remember to leave this off!!!!!!
     # remember to leave this off!!!!!!
