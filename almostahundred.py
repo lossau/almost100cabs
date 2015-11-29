@@ -1,65 +1,20 @@
 import sqlite3
+from contextlib import closing
+from functools import wraps
 from flask import Flask, request, jsonify, make_response, g
-from auth import requires_auth
-from errors import InvalidUsage
 
 
 app = Flask(__name__)
 
 # TODO: think about input parameters requirements
 # it should allow availability only, or both lat and lon
-
 # TODO: add persistence with sqlite
 # TODO: create endpoint to add driver
 # TODO: send to the cloud
-# TODO: add authentication
 # TODO: create another way to find available drivers
 # TODO: take care of error 500
-# TODO: properly divide app into files, move error handlers to errors.py
+# TODO: properly divide app into files. Use Blueprints
 
-
-# --------------- persistence ------------
-from contextlib import closing
-
-DATABASE = 'database/drivers.db'
-SECRET_KEY = 'admin'
-USERNAME = 'admin'
-PASSWORD = 'admin'
-
-
-def connect_db():
-    return sqlite3.connect(app.config['DATABASE'])
-
-
-def init_db():
-    with closing(connect_db()) as db:
-        with app.open_resource('database/schema.sql', mode='r') as f:
-            db.cursor().executescript(f.read())
-        db.commit()
-
-
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = connect_db()
-    return db
-
-
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
-
-
-def query_db(query, args=(), one=False):
-    cur = get_db().execute(query, args)
-    rv = cur.fetchall()
-    cur.close()
-    return (rv[0] if rv else None) if one else rv
-
-
-# ---------------------------
 
 drivers = [
     {
@@ -94,6 +49,99 @@ drivers = [
     }]
 
 
+# ----- Error Handling --------------------------------------------
+class InvalidUsage(Exception):
+    status_code = 400
+
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+
+@app.errorhandler(InvalidUsage)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
+
+
+@app.errorhandler(400)
+def bad_request(error):
+    return make_response(jsonify({'message': 'Bad Request'}), 400)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'message': 'Not found'}), 404)
+
+
+# ----- Authentication --------------------------------------------
+def _check_auth(username, password):
+    return username == 'admin' and password == 'admin'
+
+
+def _authenticate():
+    raise InvalidUsage('Not authorized', status_code=401)
+
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not _check_auth(auth.username, auth.password):
+            return _authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ----- Persistence --------------------------------------------
+DATABASE = 'database/drivers.db'
+SECRET_KEY = 'admin'
+USERNAME = 'admin'
+PASSWORD = 'admin'
+
+
+def connect_db():
+    return sqlite3.connect(app.config['DATABASE'])
+
+
+def init_db():
+    with closing(connect_db()) as db:
+        with app.open_resource('database/schema.sql', mode='r') as f:
+            db.cursor().executescript(f.read())
+        db.commit()
+
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = connect_db()
+    return db
+
+
+def query_db(query, args=(), one=False):
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    cur.close()
+    return (rv[0] if rv else None) if one else rv
+
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+
+# ----- Custom Functions --------------------------------------------
 def _is_number(s):
     try:
         float(s)
@@ -111,18 +159,18 @@ def _is_inside_rectangle(sw, ne, point):
         return True
 
 
-def dict_from_row(row):
+def _dict_from_row(row):
     return dict(zip(row.keys(), row))
 
 
-# routes
+# ----- Routes --------------------------------------------
 @app.route('/test/', methods=['GET'])
 def test():
     db = get_db()
     db.row_factory = sqlite3.Row
     drivers = []
     for driver in query_db('select * from drivers'):
-        drivers.append(dict_from_row(driver))
+        drivers.append(_dict_from_row(driver))
     print "----- drivers: {0} - {1}".format(drivers, type(drivers))
     return jsonify({'drivers': drivers})
     return jsonify({'drivers': ""})
@@ -194,23 +242,7 @@ def who_is_active_here():
     return make_response(jsonify({'active_drivers_in_rectangle': active_drivers_in_rectangle}), 200)
 
 
-@app.errorhandler(InvalidUsage)
-def handle_invalid_usage(error):
-    response = jsonify(error.to_dict())
-    response.status_code = error.status_code
-    return response
-
-
-@app.errorhandler(400)
-def bad_request(error):
-    return make_response(jsonify({'message': 'Bad Request'}), 400)
-
-
-@app.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify({'message': 'Not found'}), 404)
-
-
+# ----- App Startup --------------------------------------------
 if __name__ == '__main__':
     # remember to leave this off!!!!!!
     # remember to leave this off!!!!!!
