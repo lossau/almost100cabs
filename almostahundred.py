@@ -8,45 +8,11 @@ app = Flask(__name__)
 
 # TODO: think about input parameters requirements
 # it should allow availability only, or both lat and lon
-# TODO: add persistence with sqlite
 # TODO: create endpoint to add driver
 # TODO: send to the cloud
 # TODO: create another way to find available drivers
 # TODO: take care of error 500
 # TODO: properly divide app into files. Use Blueprints
-
-
-drivers = [
-    {
-        "driverId": "1",
-        "latitude": -23.54981095,
-        "longitude": -46.69982655,
-        "driverAvailable": False
-    },
-    {
-        "driverId": "2",
-        "latitude": -23.60810717,
-        "longitude": -46.67500346,
-        "driverAvailable": True
-    },
-    {
-        "driverId": "3",
-        "latitude": -23.60810734,
-        "longitude": -46.67500322,
-        "driverAvailable": True
-    },
-    {
-        "driverId": "4",
-        "latitude": -23.98287476,
-        "longitude": -46.11236872,
-        "driverAvailable": True
-    },
-    {
-        "driverId": "5",
-        "latitude": -23.60810711,
-        "longitude": -46.67500309,
-        "driverAvailable": False
-    }]
 
 
 # ----- Error Handling ------------------------------------
@@ -81,6 +47,11 @@ def bad_request(error):
 @app.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'message': 'Not found'}), 404)
+
+
+@app.errorhandler(301)
+def moved_permanently(error):
+    return make_response(jsonify({'message': 'Moved Permanently'}), 301)
 
 
 # ----- Authentication ------------------------------------
@@ -166,7 +137,7 @@ def _dict_from_row(row):
 
 
 # ----- Routes --------------------------------------------
-@app.route('/drivers/', methods=['GET'])
+@app.route('/drivers', methods=['GET'])
 @requires_auth
 def get_drivers():
     db = get_db()
@@ -197,7 +168,7 @@ def driver_status(driver_id):
             raise InvalidUsage('Missing parameters', status_code=400)
         if not _is_number(request.json['longitude']) or not _is_number(request.json['latitude']):
             raise InvalidUsage('Invalid coordinates', status_code=400)
-        if not isinstance(request.json['driverAvailable'], bool):
+        if request.json['driverAvailable'] not in ['true', 'false']:
             raise InvalidUsage('Invalid driver status', status_code=400)
 
         driver = query_db('select driverId, latitude, longitude, driverAvailable from drivers where driverId = ?;', [driver_id], one=True)
@@ -231,7 +202,7 @@ def who_is_active_here():
         dict_driver = _dict_from_row(driver)
         driver_pos = (dict_driver['latitude'], dict_driver['longitude'])
         driver_available = dict_driver['driverAvailable']
-        if _is_inside_rectangle(sw, ne, driver_pos) and driver_available:
+        if _is_inside_rectangle(sw, ne, driver_pos) and driver_available == 'true':
             active_drivers_in_rectangle.append(dict_driver)
 
     drivers = []
@@ -249,5 +220,5 @@ if __name__ == '__main__':
     app.debug = True
     # app.debug = False
     app.config.from_object(__name__)
-    # init_db()
+    init_db()
     app.run()
