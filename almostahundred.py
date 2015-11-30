@@ -164,12 +164,33 @@ def driver_status(driver_id):
     elif request.method == 'POST':
         if not request.json:
             raise InvalidUsage('Missing parameters', status_code=400)
-        if 'latitude' and 'longitude' and 'driverAvailable' not in request.json.keys():
-            raise InvalidUsage('Missing parameters', status_code=400)
-        if not _is_number(request.json['longitude']) or not _is_number(request.json['latitude']):
-            raise InvalidUsage('Invalid coordinates', status_code=400)
-        if request.json['driverAvailable'] not in ['true', 'false']:
-            raise InvalidUsage('Invalid driver status', status_code=400)
+        if 'latitude' in request.json.keys():
+            if not _is_number(request.json['latitude']):
+                raise InvalidUsage('Invalid coordinates', status_code=400)
+        if 'longitude' in request.json.keys():
+            if not _is_number(request.json['longitude']):
+                raise InvalidUsage('Invalid coordinates', status_code=400)
+        if 'driverAvailable' in request.json.keys():
+            if request.json['driverAvailable'] not in ['true', 'false']:
+                raise InvalidUsage('Invalid driver status', status_code=400)
+
+        print "------------------- passou validacao"
+
+        # make de sql query with the entered parameters
+        
+        # name = request.json['name']
+        # age = request.json['age']
+        # status = request.json['status']
+
+        # sql = 'UPDATE People SET'
+        # fields = ('name', 'age', 'status')
+        # filtered = filter(lambda x: request.json.get(x), fields)
+        # if not len(filtered):
+        #     print "Error"
+        #     return
+        # sql += ",".join(["%s=?" for x in filtered])
+        # sql += ' WHERE personId=?'
+        # db.execute(sql, map(request.json.get, filtered) + [person_id])
 
         driver = query_db('select driverId, latitude, longitude, driverAvailable from drivers where driverId = ?;', [driver_id], one=True)
         if driver is None:
