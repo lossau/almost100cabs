@@ -194,33 +194,26 @@ def driver_status(driver_id):
             if request.json['driverAvailable'] not in ['true', 'false']:
                 raise InvalidUsage('Invalid driver status', status_code=400)
 
-        print "------------------- passou validacao"
-
-        # make de sql query with the entered parameters
-        
-        # name = request.json['name']
-        # age = request.json['age']
-        # status = request.json['status']
-
-        # sql = 'UPDATE People SET'
-        # fields = ('name', 'age', 'status')
-        # filtered = filter(lambda x: request.json.get(x), fields)
-        # if not len(filtered):
-        #     print "Error"
-        #     return
-        # sql += ",".join(["%s=?" for x in filtered])
-        # sql += ' WHERE personId=?'
-        # db.execute(sql, map(request.json.get, filtered) + [person_id])
-
-        driver = query_db('select driverId, latitude, longitude, driverAvailable from drivers where driverId = ?;', [driver_id], one=True)
+        driver = query_db('select driverId from drivers where driverId = ?;', [driver_id], one=True)
         if driver is None:
             raise InvalidUsage('Driver not found', status_code=404)
         else:
             db = get_db()
             db.row_factory = sqlite3.Row
-            db.execute('UPDATE Drivers SET latitude = ?, longitude = ?, driverAvailable = ? WHERE driverId = ?', (request.json['latitude'], request.json['longitude'], request.json['driverAvailable'], driver_id))
+            sql = 'UPDATE Drivers SET '
+            fields = ('latitude', 'longitude', 'driverAvailable')
+            filtered = filter(lambda x: request.json.get(x), fields)
+            if not len(filtered):
+                raise InvalidUsage('Invalid parameters', status_code=400)
+            sql += ",".join(["%s=?" for x in filtered])
+            sql += ' WHERE driverId=?'
+            sql = sql % filtered
+            driver_modified = db.execute(sql, tuple(map(request.json.get, filtered) + [driver_id]))
             db.commit()
-            return ('', 204)
+            if driver_modified.rowcount == 1:
+                return ('', 204)
+            else:
+                raise InvalidUsage('Invalid driver status', status_code=400)
 
 
 @app.route('/drivers/inArea', methods=['GET'])
