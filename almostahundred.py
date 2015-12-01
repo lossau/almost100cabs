@@ -160,9 +160,15 @@ def get_drivers():
         db.row_factory = sqlite3.Row
 
         # TODO: allow either of the parameters and insert accordingly
-        created = db.execute('INSERT INTO Drivers (name, carPlate) VALUES (?, ?)', (request.json['name'], request.json['carPlate']))
+        # driver_created = db.execute('INSERT INTO Drivers (name, carPlate) VALUES (?, ?)', (request.json['name'], request.json['carPlate']))
+        sql = 'INSERT INTO Drivers ('
+        fields = ('name', 'carPlate')
+        filtered = filter(lambda x: request.json.get(x), fields)
+        sql += ", ".join([x for x in filtered]) + ") VALUES ("
+        sql += ", ".join(["?" for x in filtered]) + ")"
+        driver_created = db.execute(sql, tuple(map(request.json.get, filtered)))
         db.commit()
-        if created.rowcount == 1:
+        if driver_created.rowcount == 1:
             return ('', 201)
         else:
             raise InvalidUsage('Invalid driver status', status_code=400)
