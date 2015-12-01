@@ -1,24 +1,35 @@
-data = {
+data1 = {
     'latitude': 123,
     'longitude': 321,
     'driverAvailable': "true"
 }
 
 
-sql = 'UPDATE Drivers SET'
+sql1 = 'UPDATE Drivers SET '
 
-fields = ('latitude', 'longitude', 'driverAvailable')
-filtered = filter(lambda x: data.get(x), fields)
-# print "---- filtered: {0}".format(filtered)
+fields1 = ('latitude', 'longitude', 'driverAvailable')
+filtered1 = filter(lambda x: data1.get(x), fields1)
 
-if not len(filtered):
-    print "Error"
+sql1 += ", ".join(["%s=?" for x in filtered1])
+sql1 += ' WHERE driverId=?'
+sql1 = sql1 % filtered1
 
-# print ["%s=?" for x in filtered]
+# print sql1
 
-sql += ",".join(["%s=?" for x in filtered])
+# ------------------------------------------------------------------
 
-# print "---- sql: {0}".format(sql)
-sql += ' WHERE driverId=?'
-# print "---- sql: {0}".format(sql)
-print tuple(map(data.get, filtered) + ["1"])
+# INSERT INTO Drivers (name, carPlate) VALUES (?, ?)
+
+data2 = {
+    "name": "Saulo",
+    "carPlate": "CCO-1233",
+    "dasd": "dqw"
+}
+
+sql2 = 'INSERT INTO Drivers ('
+fields2 = ('name', 'carPlate')
+filtered2 = filter(lambda x: data2.get(x), fields2)
+
+sql2 += ", ".join([x for x in filtered2]) + ") VALUES ("
+sql2 += ", ".join(["?" for x in filtered2]) + ")"
+print sql2
