@@ -137,15 +137,35 @@ def _dict_from_row(row):
 
 
 # ----- Routes --------------------------------------------
-@app.route('/drivers', methods=['GET'])
+@app.route('/drivers', methods=['GET', 'POST'])
 @requires_auth
 def get_drivers():
-    db = get_db()
-    db.row_factory = sqlite3.Row
-    drivers = []
-    for driver in query_db('select driverId, latitude, longitude, driverAvailable from Drivers'):
-        drivers.append(_dict_from_row(driver))
-    return make_response(jsonify({'drivers': drivers}), 200)
+
+    if request.method == 'GET':
+        db = get_db()
+        db.row_factory = sqlite3.Row
+        drivers = []
+        for driver in query_db('select driverId, latitude, longitude, driverAvailable from Drivers'):
+            drivers.append(_dict_from_row(driver))
+        return make_response(jsonify({'drivers': drivers}), 200)
+
+    if request.method == 'POST' and request.headers['Content-Type'] == 'application/json':
+
+        if not request.json:
+            raise InvalidUsage('Missing parameters', status_code=400)
+        if ('name' or 'carPlate') not in request.json.keys():
+            raise InvalidUsage('Missing parameters', status_code=400)
+
+        db = get_db()
+        db.row_factory = sqlite3.Row
+
+        # TODO: allow either of the parameters and insert accordingly
+        created = db.execute('INSERT INTO Drivers (name, carPlate) VALUES (?, ?)', (request.json['name'], request.json['carPlate']))
+        db.commit()
+        if created.rowcount == 1:
+            return ('', 201)
+        else:
+            raise InvalidUsage('Invalid driver status', status_code=400)
 
 
 @app.route('/drivers/<driver_id>/status', methods=['GET', 'POST'])
@@ -161,7 +181,7 @@ def driver_status(driver_id):
         else:
             return make_response(jsonify({'driver': _dict_from_row(driver)}), 200)
 
-    elif request.method == 'POST':
+    elif request.method == 'POST' and request.headers['Content-Type'] == 'application/json':
         if not request.json:
             raise InvalidUsage('Missing parameters', status_code=400)
         if 'latitude' and 'longitude' and 'driverAvailable' not in request.json.keys():
