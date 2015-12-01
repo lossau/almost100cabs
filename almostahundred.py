@@ -142,6 +142,7 @@ def _dict_from_row(row):
 def get_drivers():
 
     if request.method == 'GET':
+        # list all drivers
         db = get_db()
         db.row_factory = sqlite3.Row
         drivers = []
@@ -150,19 +151,21 @@ def get_drivers():
         return make_response(jsonify({'drivers': drivers}), 200)
 
     if request.method == 'POST' and request.headers['Content-Type'] == 'application/json':
-
+        # validation
         if not request.json:
             raise InvalidUsage('Missing parameters', status_code=400)
-        if ('name' or 'carPlate') not in request.json.keys():
-            raise InvalidUsage('Missing parameters', status_code=400)
 
+        # insert new driver into database
         db = get_db()
         db.row_factory = sqlite3.Row
-
-        # TODO: allow either of the parameters and insert accordingly
-        created = db.execute('INSERT INTO Drivers (name, carPlate) VALUES (?, ?)', (request.json['name'], request.json['carPlate']))
+        sql = 'INSERT INTO Drivers ('
+        fields = ('name', 'carPlate')
+        filtered = filter(lambda x: request.json.get(x), fields)
+        sql += ", ".join([x for x in filtered]) + ") VALUES ("
+        sql += ", ".join(["?" for x in filtered]) + ")"
+        driver_created = db.execute(sql, tuple(map(request.json.get, filtered)))
         db.commit()
-        if created.rowcount == 1:
+        if driver_created.rowcount == 1:
             return ('', 201)
         else:
             raise InvalidUsage('Invalid driver status', status_code=400)
@@ -173,6 +176,7 @@ def get_drivers():
 def driver_status(driver_id):
 
     if request.method == 'GET':
+        # get the desired driver's status
         db = get_db()
         db.row_factory = sqlite3.Row
         driver = query_db('select driverId, latitude, longitude, driverAvailable from drivers where driverId = ?;', [driver_id], one=True)
@@ -182,24 +186,39 @@ def driver_status(driver_id):
             return make_response(jsonify({'driver': _dict_from_row(driver)}), 200)
 
     elif request.method == 'POST' and request.headers['Content-Type'] == 'application/json':
+        # validation
         if not request.json:
             raise InvalidUsage('Missing parameters', status_code=400)
-        if 'latitude' and 'longitude' and 'driverAvailable' not in request.json.keys():
-            raise InvalidUsage('Missing parameters', status_code=400)
-        if not _is_number(request.json['longitude']) or not _is_number(request.json['latitude']):
-            raise InvalidUsage('Invalid coordinates', status_code=400)
-        if request.json['driverAvailable'] not in ['true', 'false']:
-            raise InvalidUsage('Invalid driver status', status_code=400)
+        if 'latitude' in request.json.keys():
+            if not _is_number(request.json['latitude']):
+                raise InvalidUsage('Invalid coordinates', status_code=400)
+        if 'longitude' in request.json.keys():
+            if not _is_number(request.json['longitude']):
+                raise InvalidUsage('Invalid coordinates', status_code=400)
+        if 'driverAvailable' in request.json.keys():
+            if request.json['driverAvailable'] not in ['true', 'false']:
+                raise InvalidUsage('Invalid driver status', status_code=400)
 
-        driver = query_db('select driverId, latitude, longitude, driverAvailable from drivers where driverId = ?;', [driver_id], one=True)
+        # check if driver exists
+        driver = query_db('select driverId from drivers where driverId = ?;', [driver_id], one=True)
         if driver is None:
             raise InvalidUsage('Driver not found', status_code=404)
         else:
+            # modify driver's status
             db = get_db()
             db.row_factory = sqlite3.Row
-            db.execute('UPDATE Drivers SET latitude = ?, longitude = ?, driverAvailable = ? WHERE driverId = ?', (request.json['latitude'], request.json['longitude'], request.json['driverAvailable'], driver_id))
+            sql = 'UPDATE Drivers SET '
+            fields = ('latitude', 'longitude', 'driverAvailable')
+            filtered = filter(lambda x: request.json.get(x), fields)
+            sql += ",".join(["%s=?" for x in filtered])
+            sql += ' WHERE driverId=?'
+            sql = sql % filtered
+            driver_modified = db.execute(sql, tuple(map(request.json.get, filtered) + [driver_id]))
             db.commit()
-            return ('', 204)
+            if driver_modified.rowcount == 1:
+                return ('', 204)
+            else:
+                raise InvalidUsage('Invalid driver status', status_code=400)
 
 
 @app.route('/drivers/inArea', methods=['GET'])
@@ -213,21 +232,16 @@ def who_is_active_here():
     except:
         raise InvalidUsage('Invalid coordinates', status_code=400)
 
+    # check for drivers inside rectangle
     active_drivers_in_rectangle = []
-
     db = get_db()
     db.row_factory = sqlite3.Row
-
     for driver in query_db('select driverId, latitude, longitude, driverAvailable from Drivers'):
         dict_driver = _dict_from_row(driver)
         driver_pos = (dict_driver['latitude'], dict_driver['longitude'])
         driver_available = dict_driver['driverAvailable']
         if _is_inside_rectangle(sw, ne, driver_pos) and driver_available == 'true':
             active_drivers_in_rectangle.append(dict_driver)
-
-    drivers = []
-    for driver in query_db('select driverId, latitude, longitude, driverAvailable from Drivers'):
-        drivers.append(_dict_from_row(driver))
 
     return make_response(jsonify({'active_drivers_in_rectangle': active_drivers_in_rectangle}), 200)
 
