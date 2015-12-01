@@ -142,6 +142,7 @@ def _dict_from_row(row):
 def get_drivers():
 
     if request.method == 'GET':
+        # list all drivers
         db = get_db()
         db.row_factory = sqlite3.Row
         drivers = []
@@ -150,17 +151,13 @@ def get_drivers():
         return make_response(jsonify({'drivers': drivers}), 200)
 
     if request.method == 'POST' and request.headers['Content-Type'] == 'application/json':
-
+        # validation
         if not request.json:
             raise InvalidUsage('Missing parameters', status_code=400)
-        if ('name' or 'carPlate') not in request.json.keys():
-            raise InvalidUsage('Missing parameters', status_code=400)
 
+        # insert new driver into database
         db = get_db()
         db.row_factory = sqlite3.Row
-
-        # TODO: allow either of the parameters and insert accordingly
-        # driver_created = db.execute('INSERT INTO Drivers (name, carPlate) VALUES (?, ?)', (request.json['name'], request.json['carPlate']))
         sql = 'INSERT INTO Drivers ('
         fields = ('name', 'carPlate')
         filtered = filter(lambda x: request.json.get(x), fields)
