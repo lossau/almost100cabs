@@ -145,7 +145,7 @@ def get_drivers():
         db = get_db()
         db.row_factory = sqlite3.Row
         drivers = []
-        for driver in query_db('select driverId, latitude, longitude, driverAvailable from Drivers'):
+        for driver in query_db('select driverId, latitude, longitude, driverAvailable, carPlate, name from Drivers'):
             drivers.append(_dict_from_row(driver))
         return make_response(jsonify({'drivers': drivers}), 200)
 
