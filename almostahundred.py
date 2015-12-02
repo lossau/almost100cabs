@@ -14,58 +14,17 @@ app = Flask(__name__)
 # TODO: take care of error 500
 # TODO: properly divide app into files. Use Blueprints
 
+# ERROR: qhen creating driver with no parameters
+
 
 # ----- Error Handling ------------------------------------
-class InvalidUsage(Exception):
-    status_code = 400
-
-    def __init__(self, message, status_code=None, payload=None):
-        Exception.__init__(self)
-        self.message = message
-        if status_code is not None:
-            self.status_code = status_code
-        self.payload = payload
-
-    def to_dict(self):
-        rv = dict(self.payload or ())
-        rv['message'] = self.message
-        return rv
-
-
-@app.errorhandler(InvalidUsage)
-def handle_invalid_usage(error):
-    response = jsonify(error.to_dict())
-    response.status_code = error.status_code
-    return response
-
-
-@app.errorhandler(400)
-def bad_request(error):
-    return make_response(jsonify({'message': 'Bad Request'}), 400)
-
-
-@app.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify({'message': 'Not found'}), 404)
-
-
-@app.errorhandler(301)
-def moved_permanently(error):
-    return make_response(jsonify({'message': 'Moved Permanently'}), 301)
-
-
-@app.errorhandler(500)
-def internal_error(error):
-    return make_response(jsonify({'message': 'Internal Error'}), 500)
-
-
-def make_error(status_code, sub_code, message, action):
+def make_error(status_code, message, action):
     response = jsonify({
-        'status': status_code,
-        'sub_code': sub_code,
-        'message': message,
-        'action': action
-    })
+        "error": {
+            "status": status_code,
+            "message": message,
+            "action": action
+        }})
     response.status_code = status_code
     return response
 
@@ -80,7 +39,7 @@ def _check_auth(username, password):
 
 
 def _authenticate():
-    raise InvalidUsage('Not authorized', status_code=401)
+    return make_error(401, 'Not Authorized', "Enter valid user/pass")
 
 
 def requires_auth(f):
@@ -154,38 +113,45 @@ def _dict_from_row(row):
 # ----- Routes --------------------------------------------
 @app.route('/drivers', methods=['GET', 'POST'])
 @requires_auth
-def get_drivers():
+def get_or_create_drivers():
 
     if request.method == 'GET':
         # list all drivers
         db = get_db()
         db.row_factory = sqlite3.Row
         drivers = []
-        # FEWGFEGFWEEWGEWGWEGW
-        # QUERIES HAVE TO BE INSIDE TRY!!!
-        for driver in query_db('SELECT driverId, latitude, longitude, driverAvailable, carPlate, name FROM Drivers'):
-            drivers.append(_dict_from_row(driver))
-        return make_response(jsonify({'drivers': drivers}), 200)
+        try:
+            for driver in query_db('SELECT driverId, latitude, longitude, driverAvailable, carPlate, name FROM Drivers'):
+                drivers.append(_dict_from_row(driver))
+            return make_response(jsonify({'drivers': drivers}), 200)
+        except:
+            return make_error(500, 'Internal Error', "Something went wrong with the databse")
 
-    if request.method == 'POST' and request.headers['Content-Type'] == 'application/json':
-        # validation
-        if not request.json:
-            raise InvalidUsage('Missing parameters', status_code=400)
+    if request.method == 'POST':
+        if request.headers['Content-Type'] == 'application/json':
+            # input validation
+            if 'name' and 'carPlate' not in request.json:
+                return make_error(400, 'Bad Request', "Enter either a 'name' or a 'carPlate' for the new driver")
 
-        # insert new driver into database
-        db = get_db()
-        db.row_factory = sqlite3.Row
-        sql = 'INSERT INTO Drivers ('
-        fields = ('name', 'carPlate')
-        filtered = filter(lambda x: request.json.get(x), fields)
-        sql += ", ".join([x for x in filtered]) + ") VALUES ("
-        sql += ", ".join(["?" for x in filtered]) + ")"
-        driver_created = db.execute(sql, tuple(map(request.json.get, filtered)))
-        db.commit()
-        if driver_created.rowcount == 1:
-            return ('', 201)
+            # insert new driver into database
+            db = get_db()
+            db.row_factory = sqlite3.Row
+            sql = 'INSERT INTO Drivers ('
+            fields = ('name', 'carPlate')
+            filtered = filter(lambda x: request.json.get(x), fields)
+            sql += ", ".join([x for x in filtered]) + ") VALUES ("
+            sql += ", ".join(["?" for x in filtered]) + ")"
+            try:
+                driver_created = db.execute(sql, tuple(map(request.json.get, filtered)))
+            except:
+                return make_error(500, 'Internal Error', "Something went wrong with the databse")
+            db.commit()
+            if driver_created.rowcount == 1:
+                return ('', 201)
+            else:
+                return make_error(500, 'Internal Error', "Driver not created")
         else:
-            raise InvalidUsage('Invalid driver status', status_code=400)
+            return make_error(400, 'Bad Request', "Input must be JSON")
 
 
 @app.route('/drivers/<driver_id>/status', methods=['GET', 'POST'])
@@ -196,73 +162,89 @@ def driver_status(driver_id):
         # get the desired driver's status
         db = get_db()
         db.row_factory = sqlite3.Row
-        driver = query_db('select driverId, latitude, longitude, driverAvailable from drivers where driverId = ?;', [driver_id], one=True)
+        try:
+            driver = query_db('SELECT driverId, latitude, longitude, driverAvailable FROM drivers WHERE driverId = ?;', [driver_id], one=True)
+        except:
+            return make_error(500, 'Internal Error', "Something went wrong with the databse")
         if driver is None:
             # raise InvalidUsage('Driver not found', status_code=404)
-            # add this error everywhere!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            return make_error(500, 42, 'You idiots!...', 'redirect...')
+            return make_error(404, 'Not Found', 'Enter an existing driverId')
         else:
             return make_response(jsonify({'driver': _dict_from_row(driver)}), 200)
 
-    elif request.method == 'POST' and request.headers['Content-Type'] == 'application/json':
-        # validation
-        if not request.json:
-            raise InvalidUsage('Missing parameters', status_code=400)
-        if 'latitude' in request.json.keys():
-            if not _is_number(request.json['latitude']):
-                raise InvalidUsage('Invalid coordinates', status_code=400)
-        if 'longitude' in request.json.keys():
-            if not _is_number(request.json['longitude']):
-                raise InvalidUsage('Invalid coordinates', status_code=400)
-        if 'driverAvailable' in request.json.keys():
-            if request.json['driverAvailable'] not in ['true', 'false']:
-                raise InvalidUsage('Invalid driver status', status_code=400)
+    elif request.method == 'POST':
+        if request.headers['Content-Type'] == 'application/json':
 
-        # check if driver exists
-        driver = query_db('select driverId from drivers where driverId = ?;', [driver_id], one=True)
-        if driver is None:
-            raise InvalidUsage('Driver not found', status_code=404)
-        else:
-            # modify driver's status
-            db = get_db()
-            db.row_factory = sqlite3.Row
-            sql = 'UPDATE Drivers SET '
-            fields = ('latitude', 'longitude', 'driverAvailable')
-            filtered = filter(lambda x: request.json.get(x), fields)
-            sql += ",".join(["%s=?" for x in filtered])
-            sql += ' WHERE driverId=?'
-            sql = sql % filtered
-            driver_modified = db.execute(sql, tuple(map(request.json.get, filtered) + [driver_id]))
-            db.commit()
-            if driver_modified.rowcount == 1:
-                return ('', 204)
+            # input validation
+            if not request.json:
+                return make_error(400, "Bad Request", "Enter 'latitude', 'longitude' or 'driverAvailable'")
+            if 'latitude' in request.json.keys():
+                if not _is_number(request.json['latitude']):
+                    return make_error(400, "Bad Request", "Invalid 'latitude', must be a float number")
+            if 'longitude' in request.json.keys():
+                if not _is_number(request.json['longitude']):
+                    return make_error(400, "Bad Request", "Invalid 'longitude', must be a float number")
+            if 'driverAvailable' in request.json.keys():
+                if request.json['driverAvailable'] not in ['true', 'false']:
+                    return make_error(400, "Bad Request", "Invalid 'driverAvailable', must be either 'false' or 'true'")
+
+            # check if driver exists
+            try:
+                driver = query_db('SELECT driverId FROM drivers WHERE driverId = ?;', [driver_id], one=True)
+            except:
+                return make_error(500, 'Internal Error', "Something went wrong with the databse")
+            if driver is None:
+                return make_error(404, "Not Found", "Driver not found")
             else:
-                raise InvalidUsage('Invalid driver status', status_code=400)
+                # modify driver's status
+                db = get_db()
+                db.row_factory = sqlite3.Row
+                sql = 'UPDATE Drivers SET '
+                fields = ('latitude', 'longitude', 'driverAvailable')
+                filtered = filter(lambda x: request.json.get(x), fields)
+                sql += ",".join(["%s=?" for x in filtered])
+                sql += ' WHERE driverId=?'
+                sql = sql % filtered
+                try:
+                    driver_modified = db.execute(sql, tuple(map(request.json.get, filtered) + [driver_id]))
+                except:
+                    return make_error(500, 'Internal Error', "Something went wrong with the databse")
+                db.commit()
+                if driver_modified.rowcount == 1:
+                    return ('', 204)
+                else:
+                    return make_error(500, "Internal Error", "Driver not modified")
+        else:
+            return make_error(400, 'Bad Request', "Input must be JSON")
 
 
 @app.route('/drivers/inArea', methods=['GET'])
 @requires_auth
 def who_is_active_here():
 
-    # validation
+    # input validation
     try:
         sw = tuple([float(i) for i in request.args.get('sw').split(',')])
         ne = tuple([float(i) for i in request.args.get('ne').split(',')])
     except:
-        raise InvalidUsage('Invalid coordinates', status_code=400)
+        return make_error(400, "Bad Request", "Invalid 'latitude' or 'longitude', must be a float number")
 
     # check for drivers inside rectangle
     active_drivers_in_rectangle = []
     db = get_db()
     db.row_factory = sqlite3.Row
-    for driver in query_db('select driverId, latitude, longitude, driverAvailable from Drivers'):
-        dict_driver = _dict_from_row(driver)
-        driver_pos = (dict_driver['latitude'], dict_driver['longitude'])
-        driver_available = dict_driver['driverAvailable']
-        if _is_inside_rectangle(sw, ne, driver_pos) and driver_available == 'true':
-            active_drivers_in_rectangle.append(dict_driver)
 
-    return make_response(jsonify({'active_drivers_in_rectangle': active_drivers_in_rectangle}), 200)
+    try:
+        for driver in query_db('SELECT driverId, latitude, longitude, driverAvailable FROM Drivers'):
+            dict_driver = _dict_from_row(driver)
+            driver_pos = (dict_driver['latitude'], dict_driver['longitude'])
+            driver_available = dict_driver['driverAvailable']
+            if _is_inside_rectangle(sw, ne, driver_pos) and driver_available == 'true':
+                active_drivers_in_rectangle.append(dict_driver)
+
+        return make_response(jsonify({'active_drivers_in_rectangle': active_drivers_in_rectangle}), 200)
+    except:
+        return make_error(500, 'Internal Error', "Something went wrong with the databse")
 
 
 # ----- App Startup ---------------------------------------
