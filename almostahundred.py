@@ -6,16 +6,8 @@ from flask import Flask, request, jsonify, make_response, g
 
 app = Flask(__name__)
 
-# TODO: think about input parameters requirements
-# it should allow availability only, or both lat and lon
-# TODO: create endpoint to add driver
-# TODO: send to the cloud
+# TODO: put it in the cloud
 # TODO: create another way to find available drivers
-# TODO: take care of error 500
-# TODO: properly divide app into files. Use Blueprints
-
-# ERROR: qhen creating driver with no parameters
-
 
 # ----- Error Handling ------------------------------------
 def make_error(status_code, message, action):
