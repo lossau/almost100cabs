@@ -34,20 +34,12 @@ USERNAME = 'admin'
 PASSWORD = 'admin'
 
 
-def _check_auth(username, password):
-    return username == USERNAME and password == PASSWORD
-
-
-def _authenticate():
-    return make_error(401, 'Not Authorized', "Enter valid user/pass")
-
-
 def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
-        if not auth or not _check_auth(auth.username, auth.password):
-            return _authenticate()
+        if not auth or not (auth.username == USERNAME and auth.password == PASSWORD):
+            return make_error(401, 'Not Authorized', "Enter valid user/pass")
         return f(*args, **kwargs)
     return decorated
 
