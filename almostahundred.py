@@ -54,6 +54,22 @@ def moved_permanently(error):
     return make_response(jsonify({'message': 'Moved Permanently'}), 301)
 
 
+@app.errorhandler(500)
+def internal_error(error):
+    return make_response(jsonify({'message': 'Internal Error'}), 500)
+
+
+def make_error(status_code, sub_code, message, action):
+    response = jsonify({
+        'status': status_code,
+        'sub_code': sub_code,
+        'message': message,
+        'action': action
+    })
+    response.status_code = status_code
+    return response
+
+
 # ----- Authentication ------------------------------------
 USERNAME = 'admin'
 PASSWORD = 'admin'
@@ -79,7 +95,6 @@ def requires_auth(f):
 
 # ----- Persistence ---------------------------------------
 DATABASE = 'database/drivers.db'
-SECRET_KEY = 'admin'
 
 
 def connect_db():
@@ -146,7 +161,9 @@ def get_drivers():
         db = get_db()
         db.row_factory = sqlite3.Row
         drivers = []
-        for driver in query_db('select driverId, latitude, longitude, driverAvailable, carPlate, name from Drivers'):
+        # FEWGFEGFWEEWGEWGWEGW
+        # QUERIES HAVE TO BE INSIDE TRY!!!
+        for driver in query_db('SELECT driverId, latitude, longitude, driverAvailable, carPlate, name FROM Drivers'):
             drivers.append(_dict_from_row(driver))
         return make_response(jsonify({'drivers': drivers}), 200)
 
@@ -181,7 +198,9 @@ def driver_status(driver_id):
         db.row_factory = sqlite3.Row
         driver = query_db('select driverId, latitude, longitude, driverAvailable from drivers where driverId = ?;', [driver_id], one=True)
         if driver is None:
-            raise InvalidUsage('Driver not found', status_code=404)
+            # raise InvalidUsage('Driver not found', status_code=404)
+            # add this error everywhere!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            return make_error(500, 42, 'You idiots!...', 'redirect...')
         else:
             return make_response(jsonify({'driver': _dict_from_row(driver)}), 200)
 
