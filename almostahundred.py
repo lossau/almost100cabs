@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify, make_response, g
 app = Flask(__name__)
 
 # TODO: put it in the cloud
-# TODO: create another way to find available drivers
+
 
 # ----- Error Handling ------------------------------------
 def make_error(status_code, message, action):
