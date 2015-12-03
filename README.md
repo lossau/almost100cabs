@@ -11,9 +11,9 @@ GET    /drivers
 
 POST   /drivers
 
-GET    /drivers/<driver_id>/status
+GET    /drivers/[driver_id]/status
 
-POST   /drivers/<driver_id>/status
+POST   /drivers/[driver_id]/status
 
 GET    /drivers/inArea
 
