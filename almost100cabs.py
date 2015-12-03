@@ -6,8 +6,6 @@ from flask import Flask, request, jsonify, make_response, g
 
 app = Flask(__name__)
 
-# TODO: put it in the cloud
-
 
 # ----- Error Handling ------------------------------------
 def make_error(status_code, message, action):
@@ -151,7 +149,6 @@ def driver_status(driver_id):
         except:
             return make_error(500, 'Internal Error', "Something went wrong with the databse")
         if driver is None:
-            # raise InvalidUsage('Driver not found', status_code=404)
             return make_error(404, 'Not Found', 'Enter an existing driverId')
         else:
             return make_response(jsonify({'driver': _dict_from_row(driver)}), 200)
