@@ -103,10 +103,10 @@ def get_or_create_drivers():
 
     if request.method == 'GET':
         # list all drivers
-        db = get_db()
-        db.row_factory = sqlite3.Row
         drivers = []
         try:
+            db = get_db()
+            db.row_factory = sqlite3.Row
             for driver in query_db('SELECT driverId, latitude, longitude, driverAvailable, carPlate, name FROM Drivers'):
                 drivers.append(_dict_from_row(driver))
             return make_response(jsonify({'drivers': drivers}), 200)
@@ -120,14 +120,14 @@ def get_or_create_drivers():
                 return make_error(400, 'Bad Request', "Enter either a 'name' or a 'carPlate' for the new driver")
 
             # insert new driver into database
-            db = get_db()
-            db.row_factory = sqlite3.Row
             sql = 'INSERT INTO Drivers ('
             fields = ('name', 'carPlate')
             filtered = filter(lambda x: request.json.get(x), fields)
             sql += ", ".join([x for x in filtered]) + ") VALUES ("
             sql += ", ".join(["?" for x in filtered]) + ")"
             try:
+                db = get_db()
+                db.row_factory = sqlite3.Row
                 driver_created = db.execute(sql, tuple(map(request.json.get, filtered)))
             except:
                 return make_error(500, 'Internal Error', "Something went wrong with the databse")
@@ -146,9 +146,9 @@ def driver_status(driver_id):
 
     if request.method == 'GET':
         # get the desired driver's status
-        db = get_db()
-        db.row_factory = sqlite3.Row
         try:
+            db = get_db()
+            db.row_factory = sqlite3.Row
             driver = query_db('SELECT driverId, latitude, longitude, driverAvailable FROM drivers WHERE driverId = ?;', [driver_id], one=True)
         except:
             return make_error(500, 'Internal Error', "Something went wrong with the databse")
@@ -216,10 +216,9 @@ def who_is_active_here():
 
     # check for drivers inside area
     active_drivers_in_area = []
-    db = get_db()
-    db.row_factory = sqlite3.Row
-
     try:
+        db = get_db()
+        db.row_factory = sqlite3.Row
         for driver in query_db('SELECT driverId, latitude, longitude, driverAvailable FROM Drivers'):
             dict_driver = _dict_from_row(driver)
             driver_pos = (dict_driver['latitude'], dict_driver['longitude'])
