@@ -23,6 +23,11 @@ def make_error(status_code, message, action):
     return response
 
 
+@app.errorhandler(404)
+def not_found(e):
+    return make_error(404, "Not found", "The resource you tried to acces does not exist.")
+
+
 # ----- Authentication ------------------------------------
 USERNAME = 'admin'
 PASSWORD = 'admin'
@@ -225,6 +230,31 @@ def who_is_active_here():
             driver_available = dict_driver['driverAvailable']
             if _is_inside_area(sw, ne, driver_pos) and driver_available == 'true':
                 active_drivers_in_area.append(dict_driver)
+
+        return make_response(jsonify({'active_drivers_in_area': active_drivers_in_area}), 200)
+    except:
+        return make_error(500, 'Internal Error', "Something went wrong with the databse")
+
+
+@app.route('/drivers/inArea/v2', methods=['GET'])
+@requires_auth
+def who_is_active_here2():
+
+    # input validation
+    try:
+        sw = tuple([float(i) for i in request.args.get('sw').split(',')])
+        ne = tuple([float(i) for i in request.args.get('ne').split(',')])
+    except:
+        return make_error(400, "Bad Request", "Invalid 'latitude' or 'longitude', must be a float number")
+
+    # check for drivers inside area
+    active_drivers_in_area = []
+    try:
+        db = get_db()
+        db.row_factory = sqlite3.Row
+
+        for driver in query_db('SELECT driverId, latitude, longitude, driverAvailable FROM Drivers WHERE (latitude BETWEEN ? AND ?) AND (longitude BETWEEN ? AND ?) AND driverAvailable = "true";', [sw[0], ne[0], sw[1], ne[1]]):
+            active_drivers_in_area.append(_dict_from_row(driver))
 
         return make_response(jsonify({'active_drivers_in_area': active_drivers_in_area}), 200)
     except:

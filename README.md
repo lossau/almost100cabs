@@ -17,6 +17,8 @@ POST   /drivers/[driver_id]/status
 
 GET    /drivers/inArea
 
+GET    /drivers/inArea/v2 (same as above, with improved SQL query)
+
 
 ### Usage
 
@@ -42,3 +44,7 @@ Here are some example requests to each endpoint, using **curl**.
 **Get all available drivers in area**
 
 `$ curl -i 'saulomendes.pythonanywhere.com/drivers/inArea?sw=-23.612474,-46.702746&ne=-23.589548,-46.673392' --user admin:admin`
+
+**Get all available drivers in area v2**
+
+`$ curl -i 'saulomendes.pythonanywhere.com/drivers/inArea/v2?sw=-23.612474,-46.702746&ne=-23.589548,-46.673392' --user admin:admin`
