@@ -8,20 +8,25 @@ app = Flask(__name__)
 
 
 # ----- Error Handling ------------------------------------
-def make_error(status_code, message, action):
+def make_error(status_code, message, info):
     response = jsonify({
         "error": {
             "status": status_code,
             "message": message,
-            "action": action
+            "info": info
         }})
     response.status_code = status_code
     return response
 
 
 @app.errorhandler(404)
-def not_found(e):
-    return make_error(404, "Not found", "The resource you tried to acces does not exist.")
+def error_not_found(e):
+    return make_error(404, "Not found", "The resource requested does not exist.")
+
+
+@app.errorhandler(400)
+def error_bad_request(e):
+    return make_error(400, "Bad request", "Something went wrong with the request.")
 
 
 # ----- Authentication ------------------------------------
