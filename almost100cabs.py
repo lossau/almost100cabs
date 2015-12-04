@@ -6,10 +6,6 @@ from flask import Flask, request, jsonify, make_response, g
 
 app = Flask(__name__)
 
-# falar de como pode achar os taxis rapidamente
-# pode orderda-los por latitude e por longitude
-# fazer um select somente dos drivers entre pontos
-
 
 # ----- Error Handling ------------------------------------
 def make_error(status_code, message, action):
