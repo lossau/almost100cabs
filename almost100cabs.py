@@ -210,7 +210,7 @@ def driver_status(driver_id):
 
 @app.route('/drivers/inArea', methods=['GET'])
 @requires_auth
-def who_is_active_here():
+def who_is_available_here():
 
     # input validation
     try:
@@ -220,7 +220,7 @@ def who_is_active_here():
         return make_error(400, "Bad Request", "Invalid 'latitude' or 'longitude', must be a float number")
 
     # check for drivers inside area
-    active_drivers_in_area = []
+    available_drivers_in_area = []
     try:
         db = get_db()
         db.row_factory = sqlite3.Row
@@ -229,16 +229,16 @@ def who_is_active_here():
             driver_pos = (dict_driver['latitude'], dict_driver['longitude'])
             driver_available = dict_driver['driverAvailable']
             if _is_inside_area(sw, ne, driver_pos) and driver_available == 'true':
-                active_drivers_in_area.append(dict_driver)
+                available_drivers_in_area.append(dict_driver)
 
-        return make_response(jsonify({'active_drivers_in_area': active_drivers_in_area}), 200)
+        return make_response(jsonify({'available_drivers_in_area': available_drivers_in_area}), 200)
     except:
         return make_error(500, 'Internal Error', "Something went wrong with the databse")
 
 
 @app.route('/drivers/inArea/v2', methods=['GET'])
 @requires_auth
-def who_is_active_here2():
+def who_is_available_here2():
 
     # input validation
     try:
@@ -248,15 +248,15 @@ def who_is_active_here2():
         return make_error(400, "Bad Request", "Invalid 'latitude' or 'longitude', must be a float number")
 
     # check for drivers inside area
-    active_drivers_in_area = []
+    available_drivers_in_area = []
     try:
         db = get_db()
         db.row_factory = sqlite3.Row
 
         for driver in query_db('SELECT driverId, latitude, longitude, driverAvailable FROM Drivers WHERE (latitude BETWEEN ? AND ?) AND (longitude BETWEEN ? AND ?) AND driverAvailable = "true";', [sw[0], ne[0], sw[1], ne[1]]):
-            active_drivers_in_area.append(_dict_from_row(driver))
+            available_drivers_in_area.append(_dict_from_row(driver))
 
-        return make_response(jsonify({'active_drivers_in_area': active_drivers_in_area}), 200)
+        return make_response(jsonify({'available_drivers_in_area': available_drivers_in_area}), 200)
     except:
         return make_error(500, 'Internal Error', "Something went wrong with the databse")
 
