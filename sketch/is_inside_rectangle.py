@@ -1,15 +1,14 @@
+import random
+
 sw = (-23.612474, -46.702746)
 ne = (-23.589548, -46.673392)
 
-driver1 = (-23.54981095, -46.69982655)
-driver2 = (-23.60810717, -46.67500346)
-driver3 = (-23.98287476, -46.11236872)
 
-drivers = [driver1, driver2, driver3]
+drivers = []
 
-# sw = (0, 1)
-# ne = (4, 5)
-# point = (4, 5)
+for i in range(1000):
+    drivers.append((random.uniform(-23.613574, -23.589148), random.uniform(-46.703746, -46.652392)))
+    # drivers.append((random.uniform(-23.612474, -23.589548), random.uniform(-46.702746, -46.673392)))
 
 
 def is_inside_rectangle(sw, ne, point):
@@ -20,6 +19,17 @@ def is_inside_rectangle(sw, ne, point):
     else:
         return True
 
+inside = 0
+outside = 0
 
 for driver in drivers:
-    print "--- {0}: {1}".format(driver, is_inside_rectangle(sw, ne, driver))
+    if is_inside_rectangle(sw, ne, driver):
+        inside = inside + 1
+        print "++++++ {0}".format(driver)
+    else:
+        outside = outside + 1
+        print "------ {0}".format(driver)
+
+print "-------------------------------------------------"
+print "---- inside: {0}".format(inside)
+print "---- outside: {0}".format(outside)
